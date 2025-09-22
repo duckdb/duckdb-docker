@@ -4,10 +4,10 @@
 Docker image of DuckDB
 
 ```shellsession
-$ docker pull hfmuehleisen/duckdb:latest
+$ docker pull duckdb/duckdb:latest
 ```
 
-  - [View Available Tags (DuckDB versions)](https://hub.docker.com/r/hfmuehleisen/duckdb/tags) @ DockerHub
+  - [View Available Tags (DuckDB versions)](https://hub.docker.com/r/duckdb/duckdb/tags) @ DockerHub
 - Supported Architecture:
   - Arm64 and AMD64
 
@@ -16,16 +16,16 @@ $ docker pull hfmuehleisen/duckdb:latest
 ### Pull the latest image
 
 ```shellsession
-$ docker pull hfmuehleisen/duckdb:latest
+$ docker pull duckdb/duckdb:latest
 ```
 
 ### Specify the version to pull
 
 ```shellsession
-$ docker pull hfmuehleisen/duckdb:1.3.2
+$ docker pull duckdb/duckdb:1.3.2
 ```
 
-- [Available versions](https://hub.docker.com/r/hfmuehleisen/duckdb/tags) @ hub.docker.com
+- [Available versions](https://hub.docker.com/r/duckdb/duckdb/tags) @ hub.docker.com
 
 
 ### Interactive
@@ -33,7 +33,7 @@ $ docker pull hfmuehleisen/duckdb:1.3.2
 Running `duckdb` command inside the container interactively.
 
 ```shellsession
-$ docker run --rm -it -v "$(pwd):/workspace" -w /workspace hfmuehleisen/duckdb
+$ docker run --rm -it -v "$(pwd):/workspace" -w /workspace duckdb/duckdb
 DuckDB v1.3.2 (Ossivalis) 0b83e5d2f6
 Enter ".help" for usage hints.
 Connected to a transient in-memory database.
@@ -60,15 +60,15 @@ sample.db
 > [!TIP]
 > For Windows users, use `%cd%` or `${PWD}` instead of `$(pwd)`.
 >
-> - `cmd.exe`: `docker run --rm -it -v "%cd%:/workspace" -w /workspace hfmuehleisen/duckdb`
-> - `PowerShell`: `docker run --rm -it -v "${PWD}:/workspace" -w /workspace hfmuehleisen/duckdb `
+> - `cmd.exe`: `docker run --rm -it -v "%cd%:/workspace" -w /workspace duckdb/duckdb`
+> - `PowerShell`: `docker run --rm -it -v "${PWD}:/workspace" -w /workspace duckdb/duckdb `
 
 ### Command
 
 - Running `duckdb --version` command:
 
 ```shellsession
-$ docker run --rm hfmuehleisen/duckdb duckdb --version
+$ docker run --rm duckdb/duckdb duckdb --version
 v1.3.2 (Ossivalis) 0b83e5d2f6
 ```
 
@@ -77,7 +77,7 @@ v1.3.2 (Ossivalis) 0b83e5d2f6
 ```shellsession
 $ ls
 sample.db
-$ docker run --rm -it -v "$(pwd):/workspace" hfmuehleisen/duckdb duckdb /workspace/sample.db -header -column 'SELECT rowid, * FROM table_sample;'
+$ docker run --rm -it -v "$(pwd):/workspace" duckdb/duckdb duckdb /workspace/sample.db -header -column 'SELECT rowid, * FROM table_sample;'
 rowid  timestamp                description            
 -----  -----------------------  -----------------------
 0      2025-09-15 12:17:00.387  First sample data. Foo 
