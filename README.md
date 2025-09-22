@@ -22,7 +22,7 @@ $ docker pull duckdb/duckdb:latest
 ### Specify the version to pull
 
 ```shellsession
-$ docker pull duckdb/duckdb:1.3.2
+$ docker pull duckdb/duckdb:1.4.0
 ```
 
 - [Available versions](https://hub.docker.com/r/duckdb/duckdb/tags) @ hub.docker.com
@@ -34,7 +34,7 @@ Running `duckdb` command inside the container interactively.
 
 ```shellsession
 $ docker run --rm -it -v "$(pwd):/workspace" -w /workspace duckdb/duckdb
-DuckDB v1.3.2 (Ossivalis) 0b83e5d2f6
+DuckDB v1.4.0 (Andium) b8a06e4a22
 Enter ".help" for usage hints.
 Connected to a transient in-memory database.
 Use ".open FILENAME" to reopen on a persistent database.
@@ -69,7 +69,7 @@ sample.db
 
 ```shellsession
 $ docker run --rm duckdb/duckdb duckdb --version
-v1.3.2 (Ossivalis) 0b83e5d2f6
+v1.4.0 (Andium) b8a06e4a22
 ```
 
 - Executing SQL query to the mounted database:
