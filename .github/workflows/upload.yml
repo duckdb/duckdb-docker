@@ -3,7 +3,7 @@ on:
   workflow_call:
     inputs:
       duckdb_version:
-        decription: The DuckDB version to deploy. Without leading 'v'!
+        description: The DuckDB version to deploy. Without leading 'v'!
         type: string
         required: true
       set_as_latest:
@@ -67,11 +67,11 @@ jobs:
         echo $REPORTED_VER
 
 
-     - name: Upload to hub.docker.com
-       shell: bash
-       # env:
-       #   AWS_ENDPOINT_URL: ${{ secrets.S3_DUCKDB_STAGING_ENDPOINT }}
-       #   AWS_ACCESS_KEY_ID: ${{ secrets.S3_DUCKDB_STAGING_ID }}
-       #   AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_DUCKDB_STAGING_KEY }}
-       run: |
-        echo "fuu"
+     # - name: Upload to hub.docker.com
+     #   shell: bash
+     #   # env:
+     #   #   AWS_ENDPOINT_URL: ${{ secrets.S3_DUCKDB_STAGING_ENDPOINT }}
+     #   #   AWS_ACCESS_KEY_ID: ${{ secrets.S3_DUCKDB_STAGING_ID }}
+     #   #   AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_DUCKDB_STAGING_KEY }}
+     #   run: |
+     #    echo "fuu"
