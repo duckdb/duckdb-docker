@@ -2,7 +2,7 @@
 
 name: Deploy
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       image_name:
         description: The Docker image name, e.g. 'duckdb/duckdb'
