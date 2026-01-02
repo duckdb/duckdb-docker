@@ -4,6 +4,11 @@ name: Deploy
 on:
   workflow_call:
     inputs:
+      image_name:
+        description: The Docker image name, e.g. 'duckdb/duckdb'
+        type: string
+        required: true
+        default:  'hfmuehleisen/duckdb-testing'
       duckdb_version:
         description: The DuckDB version to deploy. Without leading 'v'!
         type: string
@@ -12,22 +17,13 @@ on:
         description: Whether to set this version as the latest on Docker
         type: boolean
         default: false
-  workflow_dispatch:
-    inputs:
-      duckdb_version:
-        type: string
-        required: true
-      set_as_latest:
-        type: boolean   
-        default: false
 
 env:
-  IMAGE_NAME: hfmuehleisen/duckdb-testing
-  TEST_TAG: ${{ env.IMAGE_NAME }}:test
-  LATEST_TAG: ${{ env.IMAGE_NAME }}:latest
+  IMAGE_NAME: ${{ inputs.image_name }}
+  TEST_TAG: ${{ inputs.image_name }}:test
+  LATEST_TAG: ${{ inputs.image_name }}:latest
   VER: ${{ inputs.duckdb_version }}
-  VER_TAG: ${{ env.IMAGE_NAME }}:${{ env.VER }}
-
+  VER_TAG: ${{ inputs.image_name }}:${{ inputs.duckdb_version }}
 
 jobs:
   docker:
