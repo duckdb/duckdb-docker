@@ -51,7 +51,7 @@ jobs:
         ENV PATH="\$PATH:/"
         EOM
 
-        docker buildx build --platform linux/amd64,linux/arm64 -t $PKG:$VER .
+        docker buildx build --platform linux/amd64,linux/arm64 -t $PKG:$VER --load .
 
         REPORTED_VER=`docker run --rm $PKG:$VER duckdb -csv -noheader -c "SELECT version()"`
 
