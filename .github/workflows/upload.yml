@@ -1,0 +1,51 @@
+name: Staged Upload
+on:
+  workflow_call:
+    inputs:
+      duckdb_version:
+        type: string
+      set_as_latest:
+        type: boolean  
+  workflow_dispatch:
+    inputs:
+      duckdb_version:
+        type: string
+      set_as_latest:
+        type: boolean   
+
+jobs:
+ docker-upload:
+   runs-on: ubuntu-latest
+   if: ${{ inputs.duckdb_version != '' }}
+   steps:
+
+     - name: Deploy to hub.docker.com
+       shell: bash
+       env:
+          VER: ${{ inputs.duckdb_version }}
+       #   AWS_ENDPOINT_URL: ${{ secrets.S3_DUCKDB_STAGING_ENDPOINT }}
+       #   AWS_ACCESS_KEY_ID: ${{ secrets.S3_DUCKDB_STAGING_ID }}
+       #   AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_DUCKDB_STAGING_KEY }}
+       run: |
+        curl -s -L -o duckdb_cli-linux-amd64.zip "https://install.duckdb.org/v$VER/duckdb_cli-linux-amd64.zip"
+        curl -s -L -o duckdb_cli-linux-arm64.zip "https://install.duckdb.org/v$VER/duckdb_cli-linux-arm64.zip"
+
+        unzip -p duckdb_cli-linux-amd64.zip duckdb > duckdb_amd64
+        unzip -p duckdb_cli-linux-arm64.zip duckdb > duckdb_arm64
+
+        chmod +x duckdb_*
+
+        cat > Dockerfile <<- EOM
+        FROM gcr.io/distroless/cc-debian12
+        ARG TARGETPLATFORM
+        ARG TARGETARCH
+        COPY duckdb_\$TARGETARCH /duckdb
+        CMD ["/duckdb"]
+        ENV PATH="\$PATH:/"
+        EOM
+
+        docker buildx build --platform linux/amd64,linux/arm64 -t $PKG:$VER --push .
+
+        REPORTED_VER=`docker run --rm $PKG:$VER duckdb -csv -noheader -c "SELECT version()"`
+
+        echo $REPORTED_VER
