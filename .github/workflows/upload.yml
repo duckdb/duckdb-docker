@@ -19,7 +19,6 @@ on:
         type: boolean   
         default: false
 
-
 jobs:
  docker-upload:
    runs-on: ubuntu-latest
@@ -36,20 +35,12 @@ jobs:
 
      - name: Create and test Image
        shell: bash
-
-       #   AWS_ENDPOINT_URL: ${{ secrets.S3_DUCKDB_STAGING_ENDPOINT }}
-       #   AWS_ACCESS_KEY_ID: ${{ secrets.S3_DUCKDB_STAGING_ID }}
-       #   AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_DUCKDB_STAGING_KEY }}
        run: |
-
         curl -s -L -o duckdb_cli-linux-amd64.zip "https://install.duckdb.org/v$VER/duckdb_cli-linux-amd64.zip"
         curl -s -L -o duckdb_cli-linux-arm64.zip "https://install.duckdb.org/v$VER/duckdb_cli-linux-arm64.zip"
-
         unzip -p duckdb_cli-linux-amd64.zip duckdb > duckdb_amd64
         unzip -p duckdb_cli-linux-arm64.zip duckdb > duckdb_arm64
-
         chmod +x duckdb_*
-
 
         cat > Dockerfile <<- EOM
         FROM gcr.io/distroless/cc-debian12
@@ -64,9 +55,17 @@ jobs:
 
         REPORTED_VER=`docker run --rm $PKG:$VER duckdb -csv -noheader -c "SELECT version()"`
 
-        echo $REPORTED_VER
+        if [ $REPORTED_VER != "v$VER" ]
+        then
+          echo "Failed version check for $VER, got $REPORTED_VER"
+          exit 1
+        fi
 
-
+     - name: Upload to hub.docker.com
+       shell: bash
+       run: |
+        docker tag $PKG:$VER $PKG:latest
+        docker push --platform linux/amd64,linux/arm64 $PKG:$VER
      # - name: Upload to hub.docker.com
      #   shell: bash
      #   # env:
