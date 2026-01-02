@@ -57,6 +57,18 @@ jobs:
          chmod +x duckdb_*
          ls
 
+      - name: Create Dockerfile
+        shell: bash
+        run: |
+         cat > Dockerfile <<- EOM
+         FROM gcr.io/distroless/cc-debian12
+         ARG TARGETPLATFORM
+         ARG TARGETARCH
+         COPY duckdb_\$TARGETARCH /duckdb
+         CMD ["/duckdb"]
+         ENV PATH="\$PATH:/"
+         EOM
+
       - name: Build and export to Docker
         uses: docker/build-push-action@v6
         with:
