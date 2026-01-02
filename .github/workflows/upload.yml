@@ -3,15 +3,22 @@ on:
   workflow_call:
     inputs:
       duckdb_version:
+        decription: The DuckDB version to deploy. Without leading 'v'!
         type: string
+        required: true
       set_as_latest:
-        type: boolean  
+        description: Whether to set this version as the latest on Docker
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       duckdb_version:
         type: string
+        required: true
       set_as_latest:
         type: boolean   
+        default: false
+
 
 jobs:
  docker-upload:
@@ -53,7 +60,7 @@ jobs:
         ENV PATH="\$PATH:/"
         EOM
 
-        docker buildx build --platform linux/amd64,linux/arm64 -t $PKG:$VER --push .
+        docker buildx build --platform linux/amd64,linux/arm64 -t $PKG:$VER .
 
         REPORTED_VER=`docker run --rm $PKG:$VER duckdb -csv -noheader -c "SELECT version()"`
 
