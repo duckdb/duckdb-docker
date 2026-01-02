@@ -5,16 +5,16 @@ on:
   workflow_dispatch:
     inputs:
       image_name:
-        description: The Docker image name, e.g. 'duckdb/duckdb'
+        description: Docker image name, e.g. 'duckdb/duckdb'
         type: string
         required: true
         default:  'hfmuehleisen/duckdb-testing'
       duckdb_version:
-        description: The DuckDB version to deploy. Without leading 'v'!
+        description: DuckDB version to deploy. Without leading 'v'!
         type: string
         required: true
       set_as_latest:
-        description: Whether to set this version as the latest on Docker
+        description: Set this version as the 'latest' on Docker?
         type: boolean
         default: false
 
@@ -55,11 +55,12 @@ jobs:
          unzip -p duckdb_cli-linux-amd64.zip duckdb > duckdb_amd64
          unzip -p duckdb_cli-linux-arm64.zip duckdb > duckdb_arm64
          chmod +x duckdb_*
-
+         ls
 
       - name: Build and export to Docker
         uses: docker/build-push-action@v6
         with:
+          context: .
           load: true
           tags: ${{ env.TEST_TAG }}
 
