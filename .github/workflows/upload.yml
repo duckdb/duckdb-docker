@@ -1,3 +1,5 @@
+# TODO should we use releases for this instead? move to duckdb main?
+
 name: Deploy
 on:
   workflow_call:
@@ -19,58 +21,122 @@ on:
         type: boolean   
         default: false
 
+env:
+  IMAGE_NAME: hfmuehleisen/duckdb-testing
+  TEST_TAG: ${{ env.IMAGE_NAME }}:test
+  LATEST_TAG: ${{ env.IMAGE_NAME }}:latest
+  VER: ${{ inputs.duckdb_version }}
+  VER_TAG: ${{ env.IMAGE_NAME }}:${{ env.VER }}
+
+
 jobs:
- docker-upload:
-   runs-on: ubuntu-latest
-   if: ${{ inputs.duckdb_version != '' }}
-   env:
-     VER: ${{ inputs.duckdb_version }}
-     PKG: hfmuehleisen/duckdb-testing
-   steps:
-     - name: Setup Builder
-       shell: bash
-       run: |
-        docker buildx create --name duckdb_builder
-        docker buildx use duckdb_builder
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-     - name: Create and test Image
-       shell: bash
-       run: |
-        curl -s -L -o duckdb_cli-linux-amd64.zip "https://install.duckdb.org/v$VER/duckdb_cli-linux-amd64.zip"
-        curl -s -L -o duckdb_cli-linux-arm64.zip "https://install.duckdb.org/v$VER/duckdb_cli-linux-arm64.zip"
-        unzip -p duckdb_cli-linux-amd64.zip duckdb > duckdb_amd64
-        unzip -p duckdb_cli-linux-arm64.zip duckdb > duckdb_arm64
-        chmod +x duckdb_*
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
-        cat > Dockerfile <<- EOM
-        FROM gcr.io/distroless/cc-debian12
-        ARG TARGETPLATFORM
-        ARG TARGETARCH
-        COPY duckdb_\$TARGETARCH /duckdb
-        CMD ["/duckdb"]
-        ENV PATH="\$PATH:/"
-        EOM
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-        docker buildx build --platform linux/amd64,linux/arm64 -t $PKG:$VER .
-        docker buildx build --load -t $PKG:$VER .
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
 
-        REPORTED_VER=`docker run --rm $PKG:$VER duckdb -csv -noheader -c "SELECT version()"`
+      - name: Download DuckDB binaries
+        shell: bash
+        run: |
+         curl -s -L -o duckdb_cli-linux-amd64.zip "https://install.duckdb.org/v$VER/duckdb_cli-linux-amd64.zip"
+         curl -s -L -o duckdb_cli-linux-arm64.zip "https://install.duckdb.org/v$VER/duckdb_cli-linux-arm64.zip"
+         unzip -p duckdb_cli-linux-amd64.zip duckdb > duckdb_amd64
+         unzip -p duckdb_cli-linux-arm64.zip duckdb > duckdb_arm64
+         chmod +x duckdb_*
 
-        if [ $REPORTED_VER != "v$VER" ]
-        then
-          echo "Failed version check for $VER, got $REPORTED_VER"
-          exit 1
-        fi
 
-     - name: Upload to hub.docker.com
-       shell: bash
-       env:
-        DOCKER_USERNAME: hfmuehleisen
-        DOCKER_PASSWORD: ${{ secrets.DOCKER_ACCESS_TOKEN }}
-       run: |
-        if [ ${{ inputs.set_as_latest }} == 1 ]
-        then
-          docker tag $PKG:$VER $PKG:latest
-        fi
-        docker login
-        docker buildx build --platform linux/amd64,linux/arm64 -t $PKG:$VER --push .
+      - name: Build and export to Docker
+        uses: docker/build-push-action@v6
+        with:
+          load: true
+          tags: ${{ env.TEST_TAG }}
+
+      - name: Test
+        run: |
+          REPORTED_VER=`docker run --rm ${{ env.TEST_TAG }} duckdb -csv -noheader -c "SELECT version()"`
+
+          if [ $REPORTED_VER != "v$VER" ]
+          then
+            echo "Failed version check for $VER, got $REPORTED_VER"
+            exit 1
+          fi
+
+      - name: Build and push ${{ inputs.duckdb_version }}
+        uses: docker/build-push-action@v6
+        with:
+          platforms: linux/amd64,linux/arm64
+          push: true
+          sbom: true
+          provenance: mode=max
+          tags: ${{ env.VER_TAG }}
+
+# jobs:
+#  docker-upload:
+#    runs-on: ubuntu-latest
+#    if: ${{ inputs.duckdb_version != '' }}
+#    env:
+#      VER: ${{ inputs.duckdb_version }}
+#      PKG: hfmuehleisen/duckdb-testing
+#    steps:
+#      - name: Setup Builder
+#        shell: bash
+#        run: |
+#         docker buildx create --name duckdb_builder
+#         docker buildx use duckdb_builder
+
+#      - name: Create and test Image
+#        shell: bash
+#        run: |
+#         curl -s -L -o duckdb_cli-linux-amd64.zip "https://install.duckdb.org/v$VER/duckdb_cli-linux-amd64.zip"
+#         curl -s -L -o duckdb_cli-linux-arm64.zip "https://install.duckdb.org/v$VER/duckdb_cli-linux-arm64.zip"
+#         unzip -p duckdb_cli-linux-amd64.zip duckdb > duckdb_amd64
+#         unzip -p duckdb_cli-linux-arm64.zip duckdb > duckdb_arm64
+#         chmod +x duckdb_*
+
+#         cat > Dockerfile <<- EOM
+#         FROM gcr.io/distroless/cc-debian12
+#         ARG TARGETPLATFORM
+#         ARG TARGETARCH
+#         COPY duckdb_\$TARGETARCH /duckdb
+#         CMD ["/duckdb"]
+#         ENV PATH="\$PATH:/"
+#         EOM
+
+#         docker buildx build --platform linux/amd64,linux/arm64 -t $PKG:$VER .
+#         docker buildx build --load -t $PKG:$VER .
+
+#         REPORTED_VER=`docker run --rm $PKG:$VER duckdb -csv -noheader -c "SELECT version()"`
+
+#         if [ $REPORTED_VER != "v$VER" ]
+#         then
+#           echo "Failed version check for $VER, got $REPORTED_VER"
+#           exit 1
+#         fi
+
+#      - name: Upload to hub.docker.com
+#        shell: bash
+#        env:
+#         DOCKER_USERNAME: hfmuehleisen
+#         DOCKER_PASSWORD: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+#        run: |
+#         if [ ${{ inputs.set_as_latest }} == 1 ]
+#         then
+#           docker tag $PKG:$VER $PKG:latest
+#         fi
+#         docker buildx build --platform linux/amd64,linux/arm64 -t $PKG:$VER --push .
