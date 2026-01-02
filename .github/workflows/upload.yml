@@ -69,6 +69,7 @@ jobs:
         DOCKER_PASSWORD: ${{ secrets.DOCKER_ACCESS_TOKEN }}
        run: |
         if [ ${{ inputs.set_as_latest }} == 1 ]
+        then
           docker tag $PKG:$VER $PKG:latest
         fi
         docker login

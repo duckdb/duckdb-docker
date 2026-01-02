@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# DEPRECATED, use the workflow run to deploy to docker hub
+
 # TODO is this required?
 # docker buildx create --name duckdb_builder
 # docker buildx use duckdb_builder
@@ -25,7 +27,9 @@ done
 # find all the to-be-deployed versions
 VERSIONS=`duckdb -csv -noheader -c "FROM 'https://duckdb.org/data/duckdb-releases.csv' SELECT version_number WHERE version_number[1] <> '0' ORDER BY release_date"`
 
-for VER in $VERSIONS
+echo $VERSIONS
+
+for VER in '1.4.4'
 do
 	echo $VER
 	rm -f duckdb_*
