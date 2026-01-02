@@ -65,7 +65,7 @@ jobs:
        shell: bash
        run: |
         docker tag $PKG:$VER $PKG:latest
-        docker push --platform linux/amd64,linux/arm64 $PKG:$VER
+        docker push $PKG:$VER
      # - name: Upload to hub.docker.com
      #   shell: bash
      #   # env:
