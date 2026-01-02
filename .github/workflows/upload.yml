@@ -17,18 +17,24 @@ jobs:
  docker-upload:
    runs-on: ubuntu-latest
    if: ${{ inputs.duckdb_version != '' }}
+   env:
+     VER: ${{ inputs.duckdb_version }}
+     PKG: duckdb/duckdb
    steps:
-
-     - name: Deploy to hub.docker.com
+     - name: Setup Builder
        shell: bash
-       env:
-          VER: ${{ inputs.duckdb_version }}
-          PKG: duckdb/duckdb
+       run: |
+        docker buildx create --name duckdb_builder
+        docker buildx use duckdb_builder
+
+     - name: Create and test Image
+       shell: bash
 
        #   AWS_ENDPOINT_URL: ${{ secrets.S3_DUCKDB_STAGING_ENDPOINT }}
        #   AWS_ACCESS_KEY_ID: ${{ secrets.S3_DUCKDB_STAGING_ID }}
        #   AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_DUCKDB_STAGING_KEY }}
        run: |
+
         curl -s -L -o duckdb_cli-linux-amd64.zip "https://install.duckdb.org/v$VER/duckdb_cli-linux-amd64.zip"
         curl -s -L -o duckdb_cli-linux-arm64.zip "https://install.duckdb.org/v$VER/duckdb_cli-linux-arm64.zip"
 
@@ -36,6 +42,7 @@ jobs:
         unzip -p duckdb_cli-linux-arm64.zip duckdb > duckdb_arm64
 
         chmod +x duckdb_*
+
 
         cat > Dockerfile <<- EOM
         FROM gcr.io/distroless/cc-debian12
@@ -51,3 +58,13 @@ jobs:
         REPORTED_VER=`docker run --rm $PKG:$VER duckdb -csv -noheader -c "SELECT version()"`
 
         echo $REPORTED_VER
+
+
+     - name: Upload to hub.docker.com
+       shell: bash
+       # env:
+       #   AWS_ENDPOINT_URL: ${{ secrets.S3_DUCKDB_STAGING_ENDPOINT }}
+       #   AWS_ACCESS_KEY_ID: ${{ secrets.S3_DUCKDB_STAGING_ID }}
+       #   AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_DUCKDB_STAGING_KEY }}
+       run: |
+        echo "fuu"
