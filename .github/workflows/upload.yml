@@ -51,7 +51,8 @@ jobs:
         ENV PATH="\$PATH:/"
         EOM
 
-        docker buildx build --platform linux/amd64,linux/arm64 -t $PKG:$VER --load .
+        docker buildx build --platform linux/amd64,linux/arm64 -t $PKG:$VER .
+        docker buildx build --load -t $PKG:$VER .
 
         REPORTED_VER=`docker run --rm $PKG:$VER duckdb -csv -noheader -c "SELECT version()"`
 
@@ -70,5 +71,5 @@ jobs:
         if [ ${{ inputs.set_as_latest }} == 1 ]
           docker tag $PKG:$VER $PKG:latest
         fi
-        docker login -u hfmuehleisen
-        docker push -a $PKG:$VER
+        docker login
+        docker buildx build --platform linux/amd64,linux/arm64 -t $PKG:$VER --push .
