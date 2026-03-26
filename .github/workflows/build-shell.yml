@@ -1,0 +1,104 @@
+name: Build shell image
+on:
+  workflow_call:
+    inputs:
+      image_name:
+        type: string
+        required: true
+      duckdb_version:
+        type: string
+        required: true
+      set_as_latest:
+        type: boolean
+        default: false
+
+env:
+  IMAGE_NAME: ${{ inputs.image_name }}
+  TEST_TAG: ${{ inputs.image_name }}:test
+  LATEST_TAG: ${{ inputs.image_name }}:latest
+  VER: ${{ inputs.duckdb_version }}
+  VER_TAG: ${{ inputs.image_name }}:${{ inputs.duckdb_version }}
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+
+      - name: Download DuckDB binaries
+        shell: bash
+        run: |
+          curl -s -L -o duckdb_cli-linux-amd64.zip "https://install.duckdb.org/v$VER/duckdb_cli-linux-amd64.zip"
+          curl -s -L -o duckdb_cli-linux-arm64.zip "https://install.duckdb.org/v$VER/duckdb_cli-linux-arm64.zip"
+          unzip -p duckdb_cli-linux-amd64.zip duckdb > duckdb_amd64
+          unzip -p duckdb_cli-linux-arm64.zip duckdb > duckdb_arm64
+          chmod +x duckdb_*
+          ls
+
+      - name: Create Dockerfile
+        shell: bash
+        run: |
+          cat > Dockerfile <<- EOM
+          FROM debian:bookworm-slim
+          ARG TARGETPLATFORM
+          ARG TARGETARCH
+          RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+          COPY duckdb_\$TARGETARCH /usr/local/bin/duckdb
+          CMD ["duckdb"]
+          EOM
+
+      - name: Build and export to Docker
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: ${{ env.TEST_TAG }}
+
+      - name: Test
+        run: |
+          REPORTED_VER=`docker run --rm ${{ env.TEST_TAG }} duckdb -csv -noheader -c "SELECT version()"`
+
+          if [ $REPORTED_VER != "v$VER" ]
+          then
+            echo "Failed version check for $VER, got $REPORTED_VER"
+            exit 1
+          fi
+
+      - name: Verify shell access
+        run: |
+          docker run --rm ${{ env.TEST_TAG }} /bin/sh -c "echo shell works"
+          docker run --rm ${{ env.TEST_TAG }} /bin/sh -c 'duckdb -c "SELECT version()"'
+
+      - name: Build and push ${{ inputs.duckdb_version }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          sbom: true
+          provenance: mode=max
+          tags: ${{ env.VER_TAG }}
+
+      - name: Build and push latest
+        if: ${{ inputs.set_as_latest }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          sbom: true
+          provenance: mode=max
+          tags: ${{ env.LATEST_TAG }}

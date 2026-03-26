@@ -2,11 +2,6 @@ name: Deploy to Docker Hub
 on:
   workflow_dispatch:
     inputs:
-      image_name:
-        description: Docker image name.
-        type: string
-        required: true
-        default:  'duckdb/duckdb'
       duckdb_version:
         description: DuckDB version to deploy. Without leading 'v'!
         type: string
@@ -15,90 +10,30 @@ on:
         description: Set this version as the 'latest' on Docker?
         type: boolean
         default: false
-
-env:
-  IMAGE_NAME: ${{ inputs.image_name }}
-  TEST_TAG: ${{ inputs.image_name }}:test
-  LATEST_TAG: ${{ inputs.image_name }}:latest
-  VER: ${{ inputs.duckdb_version }}
-  VER_TAG: ${{ inputs.image_name }}:${{ inputs.duckdb_version }}
+      build_distroless:
+        description: Build distroless image (duckdb/duckdb)
+        type: boolean
+        default: true
+      build_shell:
+        description: Build shell image (duckdb/duckdb-shell)
+        type: boolean
+        default: true
 
 jobs:
-  docker:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ vars.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+  distroless:
+    if: ${{ inputs.build_distroless }}
+    uses: ./.github/workflows/build-distroless.yml
+    with:
+      image_name: duckdb/duckdb
+      duckdb_version: ${{ inputs.duckdb_version }}
+      set_as_latest: ${{ inputs.set_as_latest }}
+    secrets: inherit
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.IMAGE_NAME }}
-
-      - name: Download DuckDB binaries
-        shell: bash
-        run: |
-         curl -s -L -o duckdb_cli-linux-amd64.zip "https://install.duckdb.org/v$VER/duckdb_cli-linux-amd64.zip"
-         curl -s -L -o duckdb_cli-linux-arm64.zip "https://install.duckdb.org/v$VER/duckdb_cli-linux-arm64.zip"
-         unzip -p duckdb_cli-linux-amd64.zip duckdb > duckdb_amd64
-         unzip -p duckdb_cli-linux-arm64.zip duckdb > duckdb_arm64
-         chmod +x duckdb_*
-         ls
-
-      - name: Create Dockerfile
-        shell: bash
-        run: |
-         cat > Dockerfile <<- EOM
-         FROM gcr.io/distroless/cc-debian12
-         ARG TARGETPLATFORM
-         ARG TARGETARCH
-         COPY duckdb_\$TARGETARCH /duckdb
-         CMD ["/duckdb"]
-         ENV PATH="\$PATH:/"
-         EOM
-
-      - name: Build and export to Docker
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          load: true
-          tags: ${{ env.TEST_TAG }}
-
-      - name: Test
-        run: |
-          REPORTED_VER=`docker run --rm ${{ env.TEST_TAG }} duckdb -csv -noheader -c "SELECT version()"`
-
-          if [ $REPORTED_VER != "v$VER" ]
-          then
-            echo "Failed version check for $VER, got $REPORTED_VER"
-            exit 1
-          fi
-
-      - name: Build and push ${{ inputs.duckdb_version }}
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          sbom: true
-          provenance: mode=max
-          tags: ${{ env.VER_TAG }}
-
-
-      - name: Build and push latest
-        if: ${{ inputs.set_as_latest }}
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          sbom: true
-          provenance: mode=max
-          tags: ${{ env.LATEST_TAG }}
+  shell:
+    if: ${{ inputs.build_shell }}
+    uses: ./.github/workflows/build-shell.yml
+    with:
+      image_name: duckdb/duckdb-shell
+      duckdb_version: ${{ inputs.duckdb_version }}
+      set_as_latest: ${{ inputs.set_as_latest }}
+    secrets: inherit
