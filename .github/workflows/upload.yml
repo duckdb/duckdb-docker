@@ -45,12 +45,22 @@ jobs:
       - name: Download DuckDB binaries
         shell: bash
         run: |
-         curl -s -L -o duckdb_cli-linux-amd64.zip "https://install.duckdb.org/v$VER/duckdb_cli-linux-amd64.zip"
-         curl -s -L -o duckdb_cli-linux-arm64.zip "https://install.duckdb.org/v$VER/duckdb_cli-linux-arm64.zip"
-         unzip -p duckdb_cli-linux-amd64.zip duckdb > duckdb_amd64
-         unzip -p duckdb_cli-linux-arm64.zip duckdb > duckdb_arm64
-         chmod +x duckdb_*
-         ls
+          for arch in amd64 arm64; do
+            output="duckdb_${arch}"
+            if [[ "$VER" == 1.* ]]; then
+              archive="duckdb_cli-linux-${arch}.zip"
+              curl --fail --silent --show-error --location \
+                "https://install.duckdb.org/v$VER/$archive" \
+                --output "$archive"
+              unzip -p "$archive" duckdb > "$output"
+            else
+              curl --fail --silent --show-error --location \
+                "https://install.duckdb.org/v$VER/duckdb-cli-linux-${arch}.tar.gz" |
+                tar -xzO duckdb > "$output"
+            fi
+          done
+          chmod +x duckdb_*
+          ls -l duckdb_*
 
       - name: Create Dockerfile
         shell: bash
@@ -73,9 +83,9 @@ jobs:
 
       - name: Test
         run: |
-          REPORTED_VER=`docker run --rm ${{ env.TEST_TAG }} duckdb -csv -noheader -c "SELECT version()"`
+          REPORTED_VER=$(docker run --rm "${{ env.TEST_TAG }}" duckdb -csv -noheader -c "SELECT version()")
 
-          if [ $REPORTED_VER != "v$VER" ]
+          if [ "$REPORTED_VER" != "v$VER" ]
           then
             echo "Failed version check for $VER, got $REPORTED_VER"
             exit 1
